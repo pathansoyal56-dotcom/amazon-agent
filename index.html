@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amazon Affiliate Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1e1e1e;
+    --border: #2a2a2a;
+    --accent: #ff6b35;
+    --accent2: #ffd700;
+    --text: #e8e8e8;
+    --muted: #666;
+    --success: #39d98a;
+    --error: #ff4d4d;
+    --info: #4d9eff;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ---- HEADER ---- */
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+  .logo {
+    font-family: var(--mono);
+    font-size: 1.1rem;
+    color: var(--accent);
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--text); }
+  .header-status {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+  }
+  .dot.online { background: var(--success); box-shadow: 0 0 6px var(--success); }
+  .dot.error { background: var(--error); }
+
+  /* ---- LAYOUT ---- */
+  .main {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  /* ---- PANEL ---- */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  .panel-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .panel-title {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
+  .panel-body { padding: 1.25rem; }
+
+  /* ---- FORM ---- */
+  .field { margin-bottom: 1.1rem; }
+  .label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.4rem;
+    font-family: var(--mono);
+  }
+  input[type="text"], input[type="url"], input[type="password"] {
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 0.9rem;
+    transition: border-color 0.2s;
+  }
+  input:focus { outline: none; border-color: var(--accent); }
+  input::placeholder { color: #444; }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.65rem 0;
+  }
+  .toggle {
+    position: relative;
+    width: 38px; height: 20px;
+    flex-shrink: 0;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle input:checked + .toggle-track { background: var(--accent); }
+  .toggle-track::after {
+    content: '';
+    position: absolute;
+    left: 3px; top: 3px;
+    width: 14px; height: 14px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+  }
+  .toggle input:checked + .toggle-track::after { transform: translateX(18px); }
+  .toggle-label { font-size: 0.88rem; color: var(--text); }
+
+  /* ---- GENERATE BUTTON ---- */
+  .btn-generate {
+    width: 100%;
+    padding: 0.85rem;
+    background: var(--accent);
+    color: #000;
+    font-family: var(--mono);
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  .btn-generate:hover { background: #ff8555; transform: translateY(-1px); }
+  .btn-generate:disabled { background: var(--border); color: var(--muted); transform: none; cursor: not-allowed; }
+
+  /* ---- SPINNER ---- */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin {
+    width: 15px; height: 15px;
+    border: 2px solid rgba(0,0,0,0.3);
+    border-top-color: #000;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  .loading .spin { display: block; }
+
+  /* ---- STATUS BAR ---- */
+  .status-bar {
+    margin-top: 1rem;
+    padding: 0.65rem 0.85rem;
+    border-radius: 3px;
+    font-size: 0.83rem;
+    font-family: var(--mono);
+    display: none;
+    line-height: 1.4;
+  }
+  .status-bar.show { display: block; }
+  .status-bar.success { background: rgba(57,217,138,0.1); border: 1px solid rgba(57,217,138,0.25); color: var(--success); }
+  .status-bar.error { background: rgba(255,77,77,0.1); border: 1px solid rgba(255,77,77,0.25); color: var(--error); }
+  .status-bar.loading { background: rgba(77,158,255,0.08); border: 1px solid rgba(77,158,255,0.2); color: var(--info); }
+
+  /* ---- PLATFORMS ---- */
+  .platforms-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+    margin-top: 0.25rem;
+  }
+  .platform-btn {
+    padding: 0.75rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    color: var(--text);
+  }
+  .platform-btn:hover { border-color: var(--accent); background: rgba(255,107,53,0.05); }
+  .platform-btn.connected { border-color: var(--success); background: rgba(57,217,138,0.05); }
+  .platform-icon { font-size: 1.3rem; margin-bottom: 0.25rem; }
+  .platform-name { font-size: 0.78rem; font-weight: 600; display: block; }
+  .platform-status { font-size: 0.7rem; color: var(--muted); font-family: var(--mono); margin-top: 0.15rem; }
+  .platform-btn.connected .platform-status { color: var(--success); }
+
+  /* ---- RIGHT PANEL ---- */
+  .right-col { display: flex; flex-direction: column; gap: 1.5rem; }
+
+  /* ---- TABS ---- */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    padding: 0.75rem 1.1rem;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .tab-pane { display: none; padding: 1.25rem; }
+  .tab-pane.active { display: block; }
+
+  /* ---- CONTENT DISPLAY ---- */
+  .content-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1rem;
+    font-size: 0.88rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    max-height: 420px;
+    overflow-y: auto;
+    color: #ccc;
+    font-family: var(--sans);
+  }
+  .content-box::-webkit-scrollbar { width: 4px; }
+  .content-box::-webkit-scrollbar-track { background: transparent; }
+  .content-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .content-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .btn-sm {
+    padding: 0.4rem 0.85rem;
+    font-size: 0.75rem;
+    font-family: var(--mono);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-sm.copy-done { border-color: var(--success); color: var(--success); }
+
+  /* ---- STATS ROW ---- */
+  .stats-row {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .stat {
+    flex: 1;
+    text-align: center;
+  }
+  .stat-val {
+    font-family: var(--mono);
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .stat-lbl {
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 0.2rem;
+  }
+
+  /* ---- EMPTY STATE ---- */
+  .empty {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--muted);
+  }
+  .empty-icon { font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.4; }
+  .empty-text { font-family: var(--mono); font-size: 0.82rem; }
+
+  /* ---- HISTORY ---- */
+  .history-list { padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; max-height: 380px; overflow-y: auto; }
+  .history-list::-webkit-scrollbar { width: 4px; }
+  .history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .history-item {
+    padding: 0.75rem 1rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .history-item:hover { border-color: var(--accent); }
+  .history-item-main { flex: 1; min-width: 0; }
+  .history-item-name { font-size: 0.88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .history-item-date { font-size: 0.72rem; color: var(--muted); font-family: var(--mono); margin-top: 0.2rem; }
+  .history-item-badges { display: flex; gap: 0.3rem; flex-shrink: 0; }
+  .badge { padding: 0.15rem 0.45rem; border-radius: 2px; font-size: 0.65rem; font-family: var(--mono); font-weight: 700; }
+  .badge.posted { background: rgba(57,217,138,0.15); color: var(--success); }
+  .badge.draft { background: rgba(102,102,102,0.15); color: var(--muted); }
+
+  /* ---- MODAL ---- */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    width: 100%;
+    max-width: 440px;
+    padding: 1.5rem;
+  }
+  .modal-title {
+    font-family: var(--mono);
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 1.25rem;
+  }
+  .modal-actions { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
+  .btn-cancel {
+    flex: 1;
+    padding: 0.65rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .btn-save {
+    flex: 2;
+    padding: 0.65rem;
+    background: var(--accent);
+    border: none;
+    color: #000;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .modal-hint { font-size: 0.75rem; color: var(--muted); margin-top: 0.4rem; }
+
+  /* ---- RESPONSIVE ---- */
+  @media (max-width: 900px) {
+    .main { grid-template-columns: 1fr; padding: 1rem; }
+    .header { padding: 1rem; }
+  }
+  @media (max-width: 500px) {
+    .platforms-grid { grid-template-columns: repeat(4, 1fr); }
+    .platform-name { display: none; }
+    .stats-row { gap: 0.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">AFFILIATE<span>.agent</span></div>
+  <div class="header-status">
+    <div class="dot" id="apiDot"></div>
+    <span id="apiStatusText">checking...</span>
+  </div>
+</header>
+
+<!-- MODAL: Platform Connect -->
+<div class="modal-overlay" id="connectModal">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Connect Platform</div>
+    <div id="modalFields"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveCredentials()">Save & Connect</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT: CONTROLS -->
+  <div>
+    <!-- Generate Panel -->
+    <div class="panel" style="margin-bottom:1.5rem">
+      <div class="panel-header">
+        <div class="panel-title">Generate Content</div>
+      </div>
+      <div class="panel-body">
+        <div class="field">
+          <label class="label">Amazon Link *</label>
+          <input type="url" id="amazonLink" placeholder="https://amazon.com/dp/B0XXXXXXXX" />
+        </div>
+        <div class="field">
+          <label class="label">Product Name <span style="color:#444">(optional)</span></label>
+          <input type="text" id="productName" placeholder="Auto-detected from URL" />
+        </div>
+        <div class="toggle-row">
+          <label class="toggle">
+            <input type="checkbox" id="autoPost" checked>
+            <div class="toggle-track"></div>
+          </label>
+          <span class="toggle-label">Auto-post to connected platforms</span>
+        </div>
+        <div style="margin-top:1rem">
+          <button class="btn-generate" id="generateBtn" onclick="generateContent()">
+            <div class="spin" id="spinner"></div>
+            <span id="btnText">Generate &amp; Post</span>
+          </button>
+        </div>
+        <div class="status-bar" id="statusBar"></div>
+      </div>
+    </div>
+
+    <!-- Platforms Panel -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Platforms</div>
+      </div>
+      <div class="panel-body">
+        <div class="platforms-grid">
+          <div class="platform-btn" id="plat-instagram" onclick="openConnect('instagram')">
+            <div class="platform-icon">📸</div>
+            <span class="platform-name">Instagram</span>
+            <div class="platform-status" id="pstat-instagram">Not connected</div>
+          </div>
+          <div class="platform-btn" id="plat-twitter" onclick="openConnect('twitter')">
+            <div class="platform-icon">🐦</div>
+            <span class="platform-name">Twitter/X</span>
+            <div class="platform-status" id="pstat-twitter">Not connected</div>
+          </div>
+          <div class="platform-btn" id="plat-pinterest" onclick="openConnect('pinterest')">
+            <div class="platform-icon">📌</div>
+            <span class="platform-name">Pinterest</span>
+            <div class="platform-status" id="pstat-pinterest">Not connected</div>
+          </div>
+          <div class="platform-btn" id="plat-blog" onclick="openConnect('blog')">
+            <div class="platform-icon">📝</div>
+            <span class="platform-name">Blog</span>
+            <div class="platform-status" id="pstat-blog">Not connected</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: OUTPUT -->
+  <div class="right-col">
+
+    <!-- Content Panel -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Generated Content</div>
+      </div>
+
+      <!-- Stats (hidden until first generation) -->
+      <div class="stats-row" id="statsRow" style="display:none">
+        <div class="stat">
+          <div class="stat-val" id="statPosted">0</div>
+          <div class="stat-lbl">Posted</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val" id="statTime">—</div>
+          <div class="stat-lbl">Seconds</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val">5</div>
+          <div class="stat-lbl">Content types</div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs" id="contentTabs" style="display:none">
+        <button class="tab-btn active" onclick="switchTab(this,'blog')">Blog Post</button>
+        <button class="tab-btn" onclick="switchTab(this,'instagram')">Instagram</button>
+        <button class="tab-btn" onclick="switchTab(this,'tiktok')">TikTok</button>
+        <button class="tab-btn" onclick="switchTab(this,'twitter')">Twitter</button>
+        <button class="tab-btn" onclick="switchTab(this,'pinterest')">Pinterest</button>
+      </div>
+
+      <div id="tab-blog" class="tab-pane active" style="display:none">
+        <div class="content-box" id="content-blog"></div>
+        <div class="content-actions">
+          <button class="btn-sm" onclick="copyTab('blog_post','blog-copy')" id="blog-copy">Copy</button>
+        </div>
+      </div>
+      <div id="tab-instagram" class="tab-pane" style="display:none">
+        <div class="content-box" id="content-instagram"></div>
+        <div class="content-actions">
+          <button class="btn-sm" onclick="copyTab('instagram_post','ig-copy')" id="ig-copy">Copy</button>
+        </div>
+      </div>
+      <div id="tab-tiktok" class="tab-pane" style="display:none">
+        <div class="content-box" id="content-tiktok"></div>
+        <div class="content-actions">
+          <button class="btn-sm" onclick="copyTab('tiktok_script','tt-copy')" id="tt-copy">Copy</button>
+        </div>
+      </div>
+      <div id="tab-twitter" class="tab-pane" style="display:none">
+        <div class="content-box" id="content-twitter"></div>
+        <div class="content-actions">
+          <button class="btn-sm" onclick="copyTab('twitter_post','tw-copy')" id="tw-copy">Copy</button>
+        </div>
+      </div>
+      <div id="tab-pinterest" class="tab-pane" style="display:none">
+        <div class="content-box" id="content-pinterest"></div>
+        <div class="content-actions">
+          <button class="btn-sm" onclick="copyTab('pinterest_brief','pin-copy')" id="pin-copy">Copy</button>
+        </div>
+      </div>
+
+      <div class="empty" id="emptyState">
+        <div class="empty-icon">⚡</div>
+        <div class="empty-text">Paste an Amazon link and click Generate</div>
+      </div>
+    </div>
+
+    <!-- History Panel -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">History</div>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="empty" style="padding:2rem">
+          <div class="empty-text">No history yet</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── DYNAMIC API BASE (works locally AND in production) ──────────────────────
+const API_BASE = window.location.origin === 'null' || window.location.protocol === 'file:'
+  ? 'http://localhost:8000'
+  : window.location.origin;
+
+let currentContent = null;
+let generationStart = null;
+let currentPlatform = null;
+
+// ── HEALTH CHECK ─────────────────────────────────────────────────────────────
+async function checkHealth() {
+  const dot = document.getElementById('apiDot');
+  const txt = document.getElementById('apiStatusText');
+  try {
+    const r = await fetch(`${API_BASE}/health`);
+    if (r.ok) {
+      const d = await r.json();
+      dot.className = d.api_key_set ? 'dot online' : 'dot error';
+      txt.textContent = d.api_key_set ? `online · ${d.model}` : 'API key missing';
+    } else {
+      dot.className = 'dot error';
+      txt.textContent = 'backend error';
+    }
+  } catch {
+    dot.className = 'dot error';
+    txt.textContent = 'backend offline';
+  }
+}
+
+// ── GENERATE ─────────────────────────────────────────────────────────────────
+async function generateContent() {
+  const link = document.getElementById('amazonLink').value.trim();
+  const name = document.getElementById('productName').value.trim() || null;
+  const autoPost = document.getElementById('autoPost').checked;
+
+  if (!link) { showStatus('Please enter an Amazon link', 'error'); return; }
+  if (!link.includes('amazon.')) { showStatus('Link must be an Amazon URL', 'error'); return; }
+
+  setLoading(true);
+  generationStart = Date.now();
+  showStatus('Generating content — usually 30–60 seconds…', 'loading');
+
+  try {
+    const r = await fetch(`${API_BASE}/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amazon_link: link, product_name: name, auto_post: autoPost })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Server error');
+
+    currentContent = d.content;
+    renderContent(d.content);
+    const secs = Math.round((Date.now() - generationStart) / 1000);
+    const posted = d.content.posted_to ? Object.values(d.content.posted_to).filter(Boolean).length : 0;
+    showStatus(`✓ Done in ${secs}s — posted to ${posted} platform(s)`, 'success');
+    loadHistory();
+  } catch (e) {
+    showStatus('✗ ' + e.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ── RENDER CONTENT ────────────────────────────────────────────────────────────
+function renderContent(c) {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('statsRow').style.display = 'flex';
+  document.getElementById('contentTabs').style.display = 'flex';
+
+  const secs = Math.round((Date.now() - generationStart) / 1000);
+  const posted = c.posted_to ? Object.values(c.posted_to).filter(Boolean).length : 0;
+  document.getElementById('statPosted').textContent = posted;
+  document.getElementById('statTime').textContent = secs;
+
+  document.getElementById('content-blog').textContent = c.blog_post || '';
+  document.getElementById('content-instagram').textContent = c.instagram_post || '';
+  document.getElementById('content-tiktok').textContent = c.tiktok_script || '';
+  document.getElementById('content-twitter').textContent = c.twitter_post || '';
+  document.getElementById('content-pinterest').textContent = c.pinterest_brief || '';
+
+  ['blog','instagram','tiktok','twitter','pinterest'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = 'block';
+  });
+
+  // Activate first tab
+  document.querySelector('.tab-btn').click();
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function switchTab(btn, name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => {
+    p.classList.remove('active');
+    if (currentContent) p.style.display = 'block';
+  });
+  btn.classList.add('active');
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  const pane = document.getElementById(`tab-${name}`);
+  if (pane) pane.classList.add('active');
+}
+
+// ── COPY ──────────────────────────────────────────────────────────────────────
+function copyTab(key, btnId) {
+  if (!currentContent) return;
+  const text = currentContent[key] || '';
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById(btnId);
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    btn.classList.add('copy-done');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copy-done'); }, 1500);
+  });
+}
+
+// ── PLATFORM CONNECT MODAL ────────────────────────────────────────────────────
+const PLATFORM_FIELDS = {
+  instagram: [{ key: 'instagram_token', label: 'Instagram Graph API Access Token', hint: 'Get from developers.facebook.com/apps → Messenger Platform' }],
+  twitter: [
+    { key: 'twitter_api_key', label: 'API Key' },
+    { key: 'twitter_api_secret', label: 'API Secret' },
+    { key: 'twitter_access_token', label: 'Access Token' },
+    { key: 'twitter_access_secret', label: 'Access Token Secret', hint: 'Get all keys from developer.twitter.com' }
+  ],
+  pinterest: [{ key: 'pinterest_token', label: 'Pinterest Access Token', hint: 'Get from developers.pinterest.com → OAuth' }],
+  blog: [
+    { key: 'blog_api_url', label: 'Blog API Endpoint URL', hint: 'e.g. https://yourblog.com/wp-json/wp/v2/posts' },
+    { key: 'blog_api_key', label: 'API Key / Application Password' }
+  ]
+};
+
+function openConnect(platform) {
+  currentPlatform = platform;
+  const fields = PLATFORM_FIELDS[platform];
+  document.getElementById('modalTitle').textContent = `Connect ${platform.toUpperCase()}`;
+  document.getElementById('modalFields').innerHTML = fields.map(f => `
+    <div class="field">
+      <label class="label">${f.label}</label>
+      <input type="password" id="mf-${f.key}" placeholder="Paste your token here" autocomplete="off">
+      ${f.hint ? `<div class="modal-hint">${f.hint}</div>` : ''}
+    </div>
+  `).join('');
+  document.getElementById('connectModal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('connectModal').classList.remove('show');
+  currentPlatform = null;
+}
+
+async function saveCredentials() {
+  if (!currentPlatform) return;
+  const fields = PLATFORM_FIELDS[currentPlatform];
+  const creds = {};
+  let hasValue = false;
+  for (const f of fields) {
+    const val = document.getElementById(`mf-${f.key}`)?.value.trim();
+    if (val) { creds[f.key] = val; hasValue = true; }
+  }
+  if (!hasValue) { closeModal(); return; }
+
+  try {
+    const r = await fetch(`${API_BASE}/auth/connect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(creds)
+    });
+    if (r.ok) {
+      closeModal();
+      updatePlatformStatus();
+      showStatus(`✓ ${currentPlatform} connected`, 'success');
+    }
+  } catch (e) {
+    showStatus('✗ ' + e.message, 'error');
+  }
+}
+
+// Close modal on overlay click
+document.getElementById('connectModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ── PLATFORM STATUS ───────────────────────────────────────────────────────────
+async function updatePlatformStatus() {
+  try {
+    const r = await fetch(`${API_BASE}/auth/status`);
+    const d = await r.json();
+    for (const [p, connected] of Object.entries(d.connected_platforms)) {
+      const el = document.getElementById(`plat-${p}`);
+      const st = document.getElementById(`pstat-${p}`);
+      if (!el) continue;
+      if (connected) {
+        el.classList.add('connected');
+        st.textContent = '● Connected';
+      } else {
+        el.classList.remove('connected');
+        st.textContent = 'Not connected';
+      }
+    }
+  } catch {}
+}
+
+// ── HISTORY ───────────────────────────────────────────────────────────────────
+async function loadHistory() {
+  try {
+    const r = await fetch(`${API_BASE}/history?limit=20`);
+    const d = await r.json();
+    const list = document.getElementById('historyList');
+    if (!d.recent || d.recent.length === 0) {
+      list.innerHTML = '<div class="empty" style="padding:2rem"><div class="empty-text">No history yet</div></div>';
+      return;
+    }
+    list.innerHTML = d.recent.map((item, i) => {
+      const posted = item.posted_to && Object.values(item.posted_to).some(Boolean);
+      const date = new Date(item.generated_at).toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+      return `<div class="history-item" onclick="loadHistoryItem(${d.total - 1 - i})">
+        <div class="history-item-main">
+          <div class="history-item-name">${item.product_name || 'Unknown product'}</div>
+          <div class="history-item-date">${date}</div>
+        </div>
+        <div class="history-item-badges">
+          <span class="badge ${posted ? 'posted' : 'draft'}">${posted ? 'posted' : 'draft'}</span>
+        </div>
+      </div>`;
+    }).join('');
+  } catch {}
+}
+
+async function loadHistoryItem(index) {
+  try {
+    const r = await fetch(`${API_BASE}/history/${index}`);
+    const item = await r.json();
+    currentContent = item;
+    generationStart = Date.now(); // for stat display
+    renderContent(item);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (e) {
+    showStatus('✗ Could not load item', 'error');
+  }
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function showStatus(msg, type) {
+  const el = document.getElementById('statusBar');
+  el.textContent = msg;
+  el.className = `status-bar show ${type}`;
+}
+
+function setLoading(on) {
+  const btn = document.getElementById('generateBtn');
+  const spin = document.getElementById('spinner');
+  const txt = document.getElementById('btnText');
+  btn.disabled = on;
+  btn.classList.toggle('loading', on);
+  spin.style.display = on ? 'block' : 'none';
+  txt.textContent = on ? 'Generating…' : 'Generate & Post';
+}
+
+// Enter key to submit
+document.getElementById('amazonLink').addEventListener('keypress', e => {
+  if (e.key === 'Enter') generateContent();
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+checkHealth();
+updatePlatformStatus();
+loadHistory();
+setInterval(checkHealth, 30000);
+</script>
+</body>
+</html>
